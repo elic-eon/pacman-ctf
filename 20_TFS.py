@@ -41,6 +41,8 @@ class BaseAgent(CaptureAgent):
         self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
         self.pointToWin = 200
+        self.defendFood = self.getFoodYouAreDefending(gameState).asList()
+        
         if self.red:
             g_intorState[self.index-1] = None
         else:
@@ -166,6 +168,14 @@ class BaseAgent(CaptureAgent):
                 return action
         else:
             return None
+            
+    def checkDefendFood(self, gameState) :
+        defendFoodNow = self.getFoodYouAreDefending(gameState).asList()
+        if len(self.defendFood) != len(defendFoodNow) :
+            eatenFood = set(self.defendFood)^set(defendFoodNow)
+            self.defendFood = defendFoodNow
+            return list(eatenFood)[0]
+        return None
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
@@ -184,6 +194,7 @@ class GeneralAgent(BaseAgent):
         nFood = self.getNearFood(gameState, self.mypos)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         enemyDistList = self.getNearEnemy(gameState, 2)
+        eatenFood = self.checkDefendFood(gameState)
         
 
         # respawn
