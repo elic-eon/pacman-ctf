@@ -24,7 +24,7 @@ from util import nearestPoint
 #################
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
-               first = 'DebugAgent', second = 'BaseAgent', third = 'BaseAgent'):
+               first = 'MidLaneAgent', second = 'BaseAgent', third = 'BaseAgent'):
     return [eval(first)(firstIndex), eval(second)(secondIndex), eval(third)(thirdIndex)]
 
 ##########
@@ -72,44 +72,22 @@ class BaseAgent(CaptureAgent):
         else:
             return successor
 
-class DebugAgent(BaseAgent):
-    def chooseAction(self, gameState):
-        self.postion = gameState.getAgentPosition(self.index)
-        x = self.postion[0]
-        y = self.postion[1]
-        print("index: " + str(self.index) + " at " + str(self.postion))
-        key = raw_input()
-        if key == 'w':
-            if self.walls[x][y+1] == True:
-                return Directions.STOP
-            else:
-                return Directions.NORTH
-        elif key == 'a':
-            if self.walls[x-1][y] == True:
-                return Directions.STOP
-            else:
-                return Directions.WEST
-        elif key == 's':
-            if self.walls[x][y-1] == True:
-                return Directions.STOP
-            else:
-                return Directions.SOUTH
-        elif key == 'd':
-            if self.walls[x+1][y] == True:
-                return Directions.STOP
-            else:
-                return Directions.EAST
-        else:
-            return Directions.STOP
-
 class TopLaneAgent(BaseAgent):
-    def nothing():
-        return 1
+    def chooseAction(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        pos1 = (13, 1)
+        oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
+        destAcrion = self.headDestAction(gameState, pos1, actions)
+        eatAction = self.tryEatAction(gameState, oppPositions, actions)
+        if eatAction:
+            return eatAction
+        else:
+            return destAcrion
 
 class MidLaneAgent(BaseAgent):
     def chooseAction(self, gameState):
         actions = gameState.getLegalActions(self.index)
-        pos1 = (14, 7)
+        pos1 = (13, 1)
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
         destAcrion = self.headDestAction(gameState, pos1, actions)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)

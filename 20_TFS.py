@@ -23,6 +23,8 @@ from util import nearestPoint
 # Team creation #
 #################
 
+g_intorState = ["start", "start", "start", "start", "start", "start"]
+
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
                first = 'TopLaneAgent', second = 'MidLaneAgent', third = 'BotLaneAgent'):
     return [eval(first)(firstIndex), eval(second)(secondIndex), eval(third)(thirdIndex)]
@@ -36,7 +38,13 @@ class BaseAgent(CaptureAgent):
         CaptureAgent.registerInitialState(self, gameState)
         self.start = gameState.getAgentPosition(self.index)
         self.oppIndces = self.getOpponents(gameState)
+        self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
+        self.pointToWin = 200
+        if self.red:
+            g_intorState[self.index-1] = None
+        else:
+            g_intorState[self.index+1] = None
 
     def chooseAction(self, gameState):
         actions = gameState.getLegalActions(self.index)
@@ -70,8 +78,22 @@ class BaseAgent(CaptureAgent):
         for enemy in enemyList:
             dist = self.getMazeDistance(self.mypos, enemy)
             if dist <= myfilter:
-                distList += [dist]
+                distList += [(enemy, dist)]
         return distList
+
+    def getTeamAgentState(self, gameState):
+        l = []
+        for index in self.teamIndces:
+            agent = gameState.getAgentState(index)
+            l += [agent]
+        return l
+
+    def getNumPacman(self, gameState):
+        i = 0
+        for agent in self.getTeamAgentState(gameState):
+            if agent.isPacman:
+                i += 1
+        return i
 
     def headDestAction(self, gameState, pos, actions):
         bestAction = actions[0]
@@ -83,6 +105,23 @@ class BaseAgent(CaptureAgent):
             if dist < bestDistance:
                 bestAction = action
                 bestDistance = dist
+        return bestAction
+
+    def awayDestAction(self, gameState, pos, actions):
+        bestAction = actions[0]
+        bestDistance = -1
+        posibleAction = []
+        for action in actions:
+            successor = self.getSuccessor(gameState, action)
+            posNow = successor.getAgentPosition(self.index)
+            nextPosibleActions = successor.getLegalActions(self.index)
+            dist = self.getMazeDistance(posNow, pos)
+            if dist > bestDistance:
+                bestAction = action
+                bestDistance = dist
+            elif dist == bestDistance:
+                if len(nextPosibleActions) > len(posibleAction):
+                    bestAction = action
         return bestAction
 
     def tryEatAction(self, gameState, oppPositions, actions):
@@ -104,15 +143,16 @@ class BaseAgent(CaptureAgent):
 
 class GeneralAgent(BaseAgent):
     def chooseAction(self, gameState):
-        myState = gameState.getAgentState(self.index)
-        self.mypos = myState.getPosition()
+        self.myState = gameState.getAgentState(self.index)
+        self.mypos = self.myState.getPosition()
         actions = gameState.getLegalActions(self.index)
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
-        #print(oppPositions)
         nFood = self.getNearFood(gameState, self.mypos)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         enemyDistList = self.getNearEnemy(gameState, 2)
+        numTeamPacman = self.getNumPacman(gameState)
 
+        # respawn
         if self.mypos == self.start:
             self.mode = "start"
 
@@ -122,31 +162,61 @@ class GeneralAgent(BaseAgent):
             nextPos = successor.getAgentPosition(self.index)
             # on defence postion
             if nextPos == self.defencePos1:
-                if self.getScore(gameState) >= 400:
-                    self.mode = "start"
-                else:
-                    self.mode = "attack"
+                self.mode = "defence"
+        elif self.mode == "defence":
+            moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
+            self.mode = "attack"
+            # enough poing to win
+            if self.getScore(gameState) >= self.pointToWin:
+                self.mode = "defence"
+            # only one pacman in one time
+            if numTeamPacman > 0:
+                self.mode = "defence"
+            if "attack" in g_intorState or "start" in g_intorState:
+                self.mode = "defence"
         elif self.mode == "attack":
             dest = nFood
             # no food
             if nFood == None:
                 dest = self.defencePos1
-                self.mode = "start"
+                self.mode = "defence"
             # can win
-            if self.getScore(gameState) >= 400: 
-                self.mode = "start"
-            if myState.isPacman:
-                if len(enemyDistList) > 0:
-                    dest = self.defencePos1
-                #print("attack")
-            else:
-                if len(enemyDistList) > 0:
-                    dest = self.defencePos1
-            moveAction = self.headDestAction(gameState, dest, actions)
+            if self.getScore(gameState) >= self.pointToWin:
+                self.mode = "defence"
+            # not pacman and someone is pacman
+            if not self.myState.isPacman and numTeamPacman > 0:
+                self.mode = "defence"
+                dest = self.defencePos1
 
+            if self.myState.isPacman:
+                # near enemy distance less than 2
+                if len(enemyDistList) > 0:
+                    # away from enemy
+                    dest = enemyDistList[0][0]
+                    moveAction = self.awayDestAction(gameState, dest, actions)
+                else:
+                    # move to food
+                    moveAction = self.headDestAction(gameState, dest, actions)
+            else:
+                # move to enemy
+                if len(enemyDistList) > 0:
+                    #dest = self.defencePos1
+                    dest = enemyDistList[0][0]
+                moveAction = self.headDestAction(gameState, dest, actions)
+
+        g_intorState[self.index] = self.mode
+        print(g_intorState)
         if eatAction:
+            # enemy near and can eat
             return eatAction
         else:
+            # near enemy and not pacman
+            if len(enemyDistList) > 0 and not self.myState.isPacman:
+                successor = self.getSuccessor(gameState, moveAction)
+                nextAgentState = successor.getAgentState(self.index)
+                # nest action will be pacman. Dangerous!!
+                if nextAgentState.isPacman:
+                    return Directions.STOP
             return moveAction
 
 class TopLaneAgent(GeneralAgent):
@@ -155,8 +225,10 @@ class TopLaneAgent(GeneralAgent):
         self.mode = "start"
         if self.red:
             self.defencePos1 = (12, 13)
+            g_intorState[self.index-1] = None
         else:
             self.defencePos1 = (20, 2)
+            g_intorState[self.index+1] = None
 
 class MidLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
@@ -165,7 +237,7 @@ class MidLaneAgent(GeneralAgent):
         if self.red:
             self.defencePos1 = (13, 7)
         else:
-            self.defencePos1 = (17, 8)
+            self.defencePos1 = (18, 8)
 
 class BotLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
