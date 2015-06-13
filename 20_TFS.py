@@ -45,7 +45,7 @@ class BaseAgent(CaptureAgent):
         self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
         self.deadEnd = self.buildDeadEnd(gameState)
-        self.pointToWin = 200
+        self.pointToWin = 100
         self.defendFood = self.getFoodYouAreDefending(gameState).asList()
         g_intorState[self.index] = "start"
 
@@ -342,7 +342,6 @@ class BaseAgent(CaptureAgent):
         intersectionRegion = set(region1) & set(region2) & set(region3)
         RegionSet = list(intersectionRegion).sort
         return RegionSet[len(RegionSet)/2]
-        
         set123 = set(region1) & set(region2) & set(region3)
         if len(list(set123)) != 0 :
             return list(set123)
@@ -400,11 +399,11 @@ class GeneralAgent(BaseAgent):
             if eatAction:
                 moveAction = eatAction
         elif self.mode == "defence":
-            if self.getNumState(defence) == 3:
+            if self.getNumState("defence") == 3:
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
-            if self.getNumState(defence) == 2:
+            elif self.getNumState("defence") == 2:
                 moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
-            elif self.getNumState == 1:
+            elif self.getNumState("defence") == 1:
                 moveAction = self.headDestAction(gameState, self.defencePos3, actions)
             self.mode = "attack"
             # enough poing to win
@@ -431,8 +430,14 @@ class TopLaneAgent(GeneralAgent):
         self.mode = "start"
         if self.red:
             self.defencePos1 = (12, 13)
+            self.defencePos2 = (12, 13)
+            self.defencePos3 = (13, 7)
+            self.lockPos = (12, 13)
         else:
             self.defencePos1 = (20, 2)
+            self.defencePos2 = (11, 2)
+            self.defencePos3 = (11, 2)
+            self.lockPos = (19, 2)
 
 class MidLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
@@ -440,8 +445,14 @@ class MidLaneAgent(GeneralAgent):
         self.mode = "start"
         if self.red:
             self.defencePos1 = (13, 7)
+            self.defencePos2 = (12, 13)
+            self.defencePos3 = (13, 7)
+            self.lockPos = (12, 6)
         else:
             self.defencePos1 = (18, 8)
+            self.defencePos2 = (13, 7)
+            self.defencePos3 = (18, 8)
+            self.lockPos = (19, 9)
 
 class BotLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
@@ -449,8 +460,14 @@ class BotLaneAgent(GeneralAgent):
         self.mode = "start"
         if self.red:
             self.defencePos1 = (11, 2)
+            self.defencePos2 = (13, 7)
+            self.defencePos3 = (13, 7)
+            self.lockPos = (11, 2)
         else:
             self.defencePos1 = (20, 13)
+            self.defencePos2 = (11, 2)
+            self.defencePos3 = (11, 2)
+            self.lockPos = (20, 13)
 
 class DebugAgent(BaseAgent):
     def chooseAction(self, gameState):
