@@ -174,6 +174,8 @@ class BaseAgent(CaptureAgent):
             self.defendFood = defendFoodNow
             return list(eatenFood)[0]
         return None
+        
+    
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
