@@ -302,11 +302,11 @@ class BaseAgent(CaptureAgent):
         if pos1[0] > pos2[0] :
             x = pos1[0] - pos2[0]
         else :
-            x = pos1[0] - pos1[0]
+            x = pos2[0] - pos1[0]
         if pos1[1] > pos2[1] :
             y = pos1[1] - pos2[1]
         else :
-            y = pos1[1] - pos1[1]
+            y = pos2[1] - pos1[1]
         return x+y
             
     def getNoiseDistance(self, gameState) :
