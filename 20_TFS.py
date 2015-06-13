@@ -181,7 +181,7 @@ class GeneralAgent(BaseAgent):
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
         nFood = self.getNearFood(gameState, self.mypos)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
-        enemyDistList = self.getNearEnemy(gameState, 2)
+        enemyDistList = self.getNearEnemy(gameState, 3)
         
 
         # respawn
@@ -189,12 +189,18 @@ class GeneralAgent(BaseAgent):
             self.mode = "start"
 
         if self.mode == "start":
-            moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
+            if len(enemyDistList) > 0:
+                dist = enemyDistList[0][0]
+            else:
+                dist = self.defencePos1
+            moveAction = self.headDestAction(gameState, dist , actions)
             successor = self.getSuccessor(gameState, moveAction)
             nextPos = successor.getAgentPosition(self.index)
             # on defence postion
             if nextPos == self.defencePos1:
                 self.mode = "defence"
+            if eatAction:
+                moveAction = eatAction
         elif self.mode == "defence":
             moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
             self.mode = "attack"
