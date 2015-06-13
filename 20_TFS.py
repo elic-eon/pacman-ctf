@@ -362,6 +362,8 @@ class BaseAgent(CaptureAgent):
         if len(RegionSet) == 0 :
             return None
         else :
+            posx = 0
+            posy = 0
             for pos in RegionSet :
                 posx += pos[0]
                 posy += pos[1]
