@@ -72,7 +72,6 @@ class BaseAgent(CaptureAgent):
                         deadEndList.append((x,y))
                     elif degree == 2:
                         tmp[x][y] = True
-                        
         for x, y in deadEndList:
             for neighbor in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
                 if tmp[neighbor[0]][neighbor[1]]:
@@ -126,6 +125,13 @@ class BaseAgent(CaptureAgent):
         i = 0
         for agent in self.getTeamAgentState(gameState):
             if agent.isPacman:
+                i += 1
+        return i
+
+    def getNumState(self, mode):
+        i = 0
+        for state in g_intorState:
+            if state == mode:
                 i += 1
         return i
 
@@ -253,7 +259,7 @@ class BaseAgent(CaptureAgent):
             self.mode = "defence"
         # can win
         #if self.getScore(gameState) >= self.pointToWin:
-        #    self.mode = "defence"
+        #    self.mode = "lock"
         # not pacman and someone is pacman
         if not self.myState.isPacman and self.numTeamPacman > 0:
             self.mode = "defence"
@@ -381,11 +387,16 @@ class GeneralAgent(BaseAgent):
             if eatAction:
                 moveAction = eatAction
         elif self.mode == "defence":
-            moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
+            if self.getNumState(defence) == 3:
+                moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
+            if self.getNumState(defence) == 2:
+                moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
+            elif self.getNumState == 1:
+                moveAction = self.headDestAction(gameState, self.defencePos3, actions)
             self.mode = "attack"
             # enough poing to win
             if self.getScore(gameState) >= self.pointToWin:
-                self.mode = "defence"
+                self.mode = "lock"
             # only one pacman in one time
             if self.numTeamPacman > 0:
                 self.mode = "defence"
@@ -393,6 +404,8 @@ class GeneralAgent(BaseAgent):
                 self.mode = "defence"
             if eatAction:
                 moveAction = eatAction
+        elif self.mode == "lock":
+            moveAction = self.headDestAction(gameState, self.lockPos, actions)
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
 
