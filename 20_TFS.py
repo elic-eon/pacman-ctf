@@ -45,7 +45,7 @@ class BaseAgent(CaptureAgent):
         self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
         self.deadEnd = self.buildDeadEnd(gameState)
-        self.pointToWin = 100
+        self.pointToWin = 60
         self.defendFood = self.getFoodYouAreDefending(gameState).asList()
         g_intorState[self.index] = "start"
 
@@ -228,9 +228,6 @@ class BaseAgent(CaptureAgent):
 
         return 100
         
-    def manhattanDist(self, pos1, pos2):
-        return abs(pos1[0]-pos2[0]) + abs(pos1[1]-pos2[1])
-        
     def updateWalls(self, gameState):
         width = gameState.data.layout.width
         height = gameState.data.layout.height
@@ -269,8 +266,8 @@ class BaseAgent(CaptureAgent):
         if nFood == None:
             self.mode = "defence"
         # can win
-        #if self.getScore(gameState) >= self.pointToWin:
-        #    self.mode = "lock"
+        if self.getScore(gameState) >= self.pointToWin:
+            self.mode = "lock"
         # not pacman and someone is pacman
         if not self.myState.isPacman and self.numTeamPacman > 0:
             self.mode = "defence"
@@ -402,8 +399,8 @@ class GeneralAgent(BaseAgent):
             if eatAction:
                 moveAction = eatAction
         elif self.mode == "defence":
-            #for index in self.oppIndces:
-                #print(self.getnoiseOppDistance(gameState, index))
+            for index in self.oppIndces:
+                print(self.getnoiseOppDistance(gameState, index))
             if self.getNumState("defence") == 3:
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
             elif self.getNumState("defence") == 2:
