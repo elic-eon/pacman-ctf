@@ -52,9 +52,7 @@ class BaseAgent(CaptureAgent):
 
     def getNearFood(self, gameState, pos):
         foodList = self.getFood(gameState).asList()
-        if len(foodList) == 0:
-            return None
-        nFood = foodList[0]
+        nFood = None
         foodDist = 9999
         for food in foodList:
             tDist = self.getMazeDistance(pos, food)
