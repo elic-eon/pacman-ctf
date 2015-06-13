@@ -171,8 +171,8 @@ class BaseAgent(CaptureAgent):
         defendFoodNow = self.getFoodYouAreDefending(gameState).asList()
         if len(self.defendFood) != len(defendFoodNow) :
             eatenFood = set(self.defendFood)^set(defendFoodNow)
-            self.defendFood = defendFoodNow
-            return list(eatenFood)[0]
+            #self.defendFood = defendFoodNow
+            return list(eatenFood)
         return None
 
     def getSuccessor(self, gameState, action):
