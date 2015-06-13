@@ -25,9 +25,9 @@ import copy
 #################
 
 g_intorState = [None, None, None, None, None, None]
-firstAgentSight = []
-secondAgentSight = []
-thirdAgentSight = []
+global firstAgentSight
+global secondAgentSight
+global thirdAgentSight
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
                first = 'TopLaneAgent', second = 'MidLaneAgent', third = 'BotLaneAgent'):
@@ -321,14 +321,20 @@ class BaseAgent(CaptureAgent):
         return x+y
             
     def getNoiseDistance(self, gameState) :
-        if self.idx == min(self.teamIndces) :
+        global firstAgentSight
+        global secondAgentSight
+        global thirdAgentSight
+        if self.index == min(self.teamIndces) :
             firstAgentSight = gameState.getAgentDistances()
-        elif self.idx == max(self.teamIndces) :
+        elif self.index == max(self.teamIndces) :
             thirdAgentSight = gameState.getAgentDistances()
         else :
             secondAgentSight = gameState.getAgentDistances()
 
     def getnoiseOppDistance(self, gameState, oppIdx) :
+        global firstAgentSight
+        global secondAgentSight
+        global thirdAgentSight
         region1 = []
         region2 = []
         region3 = []
@@ -351,25 +357,10 @@ class BaseAgent(CaptureAgent):
                 region3.append(pos)
         #find intersection of three regions
         intersectionRegion = set(region1) & set(region2) & set(region3)
-        RegionSet = list(intersectionRegion).sort
+        RegionSet = list(intersectionRegion)
+        RegionSet.sort()
+        #print len(RegionSet)
         return RegionSet[len(RegionSet)/2]
-        set123 = set(region1) & set(region2) & set(region3)
-        if len(list(set123)) != 0 :
-            return list(set123)
-        #find intersection of two regions
-        set12 = set(region1) & set(region2)
-        if len(list(set12)) != 0 :
-            return list(set12)
-        set13 = set(region1) & set(region3)
-        if len(list(set13)) != 0 :
-            return list(set13)
-        set23 = set(region2) & set(region3)
-        if len(list(set23)) != 0 :
-            return list(set23)
-        #no intersection
-        x = int((pos1[0]+pos2[0]+pos3[0])/3)
-        y = int((pos1[1]+pos2[1]+pos3[1])/3)
-        return [(x,y)]
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
@@ -391,6 +382,7 @@ class GeneralAgent(BaseAgent):
         eatenFood = self.checkDefendFood(gameState)
 
         self.mode = g_intorState[self.index]
+        self.getNoiseDistance(gameState)
         # respawn
         if self.mypos == self.start:
             self.mode = "start"
@@ -410,6 +402,8 @@ class GeneralAgent(BaseAgent):
             if eatAction:
                 moveAction = eatAction
         elif self.mode == "defence":
+            #for index in self.oppIndces:
+                #print(self.getnoiseOppDistance(gameState, index))
             if self.getNumState("defence") == 3:
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
             elif self.getNumState("defence") == 2:
@@ -429,6 +423,8 @@ class GeneralAgent(BaseAgent):
                 moveAction = eatAction
         elif self.mode == "lock":
             moveAction = self.headDestAction(gameState, self.lockPos, actions)
+            if eatAction:
+                moveAction = eatAction
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
 
@@ -471,7 +467,7 @@ class BotLaneAgent(GeneralAgent):
         self.mode = "start"
         if self.red:
             self.defencePos1 = (11, 2)
-            self.defencePos2 = (13, 7)
+            self.defencePos2 = (6, 5)
             self.defencePos3 = (13, 7)
             self.lockPos = (11, 2)
         else:
