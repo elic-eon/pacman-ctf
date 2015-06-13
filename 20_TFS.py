@@ -297,7 +297,6 @@ class BaseAgent(CaptureAgent):
             #self.defendFood = defendFoodNow
             return list(eatenFood)
         return None
-<<<<<<< HEAD
     
     def getManhattanDistance(self, pos1, pos2) :
         if pos1[0] > pos2[0] :
@@ -310,10 +309,6 @@ class BaseAgent(CaptureAgent):
             y = pos1[1] - pos1[1]
         return x+y
             
-    
-=======
-
->>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
     def getNoiseDistance(self, gameState) :
         if self.idx == min(self.teamIndces) :
             firstAgentSight = gameState.getAgentDistances()
@@ -325,13 +320,8 @@ class BaseAgent(CaptureAgent):
     def getnoiseOppDistance(self, gameState, oppIdx) :
         region1 = []
         region2 = []
-<<<<<<< HEAD
-        region3 = []        
-        #get all position
-=======
         region3 = []
         #get !walls position
->>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
         notWalls = copy.deepcopy(self.walls) 
         for x in range(0, 32) :
             for y in range(0, 16) :
@@ -349,13 +339,10 @@ class BaseAgent(CaptureAgent):
             if self.getManhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 6 and self.getManhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 6:
                 region3.append(pos)
         #find intersection of three regions
-<<<<<<< HEAD
         intersectionRegion = set(region1) & set(region2) & set(region3)
         RegionSet = list(intersectionRegion).sort
         return RegionSet[len(RegionSet)/2]
         
-        
-=======
         set123 = set(region1) & set(region2) & set(region3)
         if len(list(set123)) != 0 :
             return list(set123)
@@ -374,7 +361,6 @@ class BaseAgent(CaptureAgent):
         y = int((pos1[1]+pos2[1]+pos3[1])/3)
         return [(x,y)]
 
->>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
