@@ -230,8 +230,6 @@ class GeneralAgent(BaseAgent):
             print moveAction
 
         g_intorState[self.index] = self.mode
-        print(g_intorState)
-
         return moveAction
 
 class TopLaneAgent(GeneralAgent):
