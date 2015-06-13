@@ -54,9 +54,7 @@ class BaseAgent(CaptureAgent):
 
     def getNearFood(self, gameState, pos):
         foodList = self.getFood(gameState).asList()
-        if len(foodList) == 0:
-            return None
-        nFood = foodList[0]
+        nFood = None
         foodDist = 9999
         for food in foodList:
             tDist = self.getMazeDistance(pos, food)
@@ -219,23 +217,15 @@ class GeneralAgent(BaseAgent):
                 self.mode = "defence"
             if "attack" in g_intorState or "start" in g_intorState:
                 self.mode = "defence"
+            if eatAction:
+                moveAction = eatAction
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
 
         g_intorState[self.index] = self.mode
         print(g_intorState)
-        if eatAction:
-            # enemy near and can eat
-            return eatAction
-        else:
-            # near enemy and not pacman
-            if len(enemyDistList) > 0 and not self.myState.isPacman:
-                successor = self.getSuccessor(gameState, moveAction)
-                nextAgentState = successor.getAgentState(self.index)
-                # nest action will be pacman. Dangerous!!
-                if nextAgentState.isPacman:
-                    return Directions.STOP
-            return moveAction
+
+        return moveAction
 
 class TopLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
