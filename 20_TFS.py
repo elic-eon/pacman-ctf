@@ -356,8 +356,15 @@ class BaseAgent(CaptureAgent):
         intersectionRegion = set(region1) & set(region2) & set(region3)
         RegionSet = list(intersectionRegion)
         RegionSet.sort()
-        #print len(RegionSet)
-        return RegionSet[len(RegionSet)/2]
+        if len(RegionSet) == 0 :
+            return None
+        else :
+            for pos in RegionSet :
+                posx += pos[0]
+                posy += pos[1]
+            posx /= len(RegionSet)
+            posy /= len(RegionSet)
+            return (posx, posy)
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
