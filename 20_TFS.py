@@ -156,6 +156,7 @@ class BaseAgent(CaptureAgent):
                 #dest = self.defencePos1
                 dest = enemyDistList[0][0]
             moveAction = self.headDestAction(gameState, dest, actions)
+        return moveAction
 
     def tryEatAction(self, gameState, oppPositions, actions):
         for action in actions:
@@ -226,6 +227,7 @@ class GeneralAgent(BaseAgent):
                 moveAction = eatAction
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
+            print moveAction
 
         g_intorState[self.index] = self.mode
         print(g_intorState)
