@@ -297,7 +297,23 @@ class BaseAgent(CaptureAgent):
             #self.defendFood = defendFoodNow
             return list(eatenFood)
         return None
+<<<<<<< HEAD
+    
+    def getManhattanDistance(self, pos1, pos2) :
+        if pos1[0] > pos2[0] :
+            x = pos1[0] - pos2[0]
+        else :
+            x = pos1[0] - pos1[0]
+        if pos1[1] > pos2[1] :
+            y = pos1[1] - pos2[1]
+        else :
+            y = pos1[1] - pos1[1]
+        return x+y
+            
+    
+=======
 
+>>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
     def getNoiseDistance(self, gameState) :
         if self.idx == min(self.teamIndces) :
             firstAgentSight = gameState.getAgentDistances()
@@ -309,27 +325,37 @@ class BaseAgent(CaptureAgent):
     def getnoiseOppDistance(self, gameState, oppIdx) :
         region1 = []
         region2 = []
+<<<<<<< HEAD
+        region3 = []        
+        #get all position
+=======
         region3 = []
         #get !walls position
+>>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
         notWalls = copy.deepcopy(self.walls) 
         for x in range(0, 32) :
             for y in range(0, 16) :
-                if notWalls[x][y] == True :
-                    notWalls[x][y] = False
-                else :
-                    notWalls[x][y] = True
+                if notWalls[x][y] == False :
+                    notWalls[x][y] = True               
         pos1 = gameState.getAgentPosition(self.teamIndces[0])
         pos2 = gameState.getAgentPosition(self.teamIndces[1])
         pos3 = gameState.getAgentPosition(self.teamIndces[2])
         #draw three regions
         for pos in notWalls.asList() :
-            if self.getMazeDistance(pos, pos1) <= firstAgentSight[oppIdx] :
+            if self.getManhattanDistance(pos, pos1) <= firstAgentSight[oppIdx] + 6  and self.getManhattanDistance(pos, pos1) >= firstAgentSight[oppIdx] - 6:
                 region1.append(pos)
-            if self.getMazeDistance(pos, pos2) <= secondAgentSight[oppIdx] :
+            if self.getManhattanDistance(pos, pos2) <= secondAgentSight[oppIdx] + 6 and self.getManhattanDistance(pos, pos2) >= secondAgentSight[oppIdx] - 6:
                 region2.append(pos)
-            if self.getMazeDistance(pos, pos3) <= thirdAgentSight[oppIdx] :
+            if self.getManhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 6 and self.getManhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 6:
                 region3.append(pos)
         #find intersection of three regions
+<<<<<<< HEAD
+        intersectionRegion = set(region1) & set(region2) & set(region3)
+        RegionSet = list(intersectionRegion).sort
+        return RegionSet[len(RegionSet)/2]
+        
+        
+=======
         set123 = set(region1) & set(region2) & set(region3)
         if len(list(set123)) != 0 :
             return list(set123)
@@ -348,6 +374,7 @@ class BaseAgent(CaptureAgent):
         y = int((pos1[1]+pos2[1]+pos3[1])/3)
         return [(x,y)]
 
+>>>>>>> e7f5bab852fdcc7a1c2ca88d774954be42df04cc
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
