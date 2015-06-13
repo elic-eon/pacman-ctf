@@ -143,21 +143,39 @@ class BaseAgent(CaptureAgent):
         return bestAction
 
     def awayDestAction(self, gameState, pos, actions):
-        bestAction = actions[0]
+        bestAction = None
         bestDistance = -1
-        posibleAction = []
         for action in actions:
             successor = self.getSuccessor(gameState, action)
             posNow = successor.getAgentPosition(self.index)
-            nextPosibleActions = successor.getLegalActions(self.index)
             dist = self.getMazeDistance(posNow, pos)
-            if dist > bestDistance:
+            if dist > bestDistance and not self.deadEnd[posNow[0]][posNow[1]]:
                 bestAction = action
                 bestDistance = dist
-            elif dist == bestDistance:
-                if len(nextPosibleActions) > len(posibleAction):
-                    bestAction = action
-        return bestAction
+        
+        if bestAction is None: return actions[0]
+        else: return bestAction
+        
+    def fetchCapsule(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        if len(self.getCapsules(gameState)) != 0:
+            capsulePos = self.getCapsules(gameState)[0]
+            if self.getMazeDistance(self.mypos, capsulePos) <= 1:
+                return self.headDestAction(gameState, capsulePos, actions)
+        
+    def fightGhost(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        for idx in self.getOpponents(gameState):
+            pos = gameState.getAgentPosition(idx)
+            if pos is not None: 
+                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                    return self.awayDestAction(gameState, pos, actions)
+                    
+        for idx in self.getOpponents(gameState):
+            pos = gameState.getAgentPosition(idx)
+            if pos is not None: 
+                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer > 0:
+                    return self.headDestAction(gameState, pos, actions)
         
     def offenceAction(self, gameState):
         # near enemy distance less than 2
@@ -165,6 +183,8 @@ class BaseAgent(CaptureAgent):
         actions = gameState.getLegalActions(self.index)
         nFood = self.getNearFood(gameState, self.mypos)
         dest = nFood
+        
+        #### state change #### 
         # no food
         if nFood == None:
             dest = self.defencePos1
@@ -177,21 +197,15 @@ class BaseAgent(CaptureAgent):
             self.mode = "defence"
             dest = self.defencePos1
             
-        if self.myState.isPacman:
-            if len(enemyDistList) > 0:
-                # away from enemy
-                dest = enemyDistList[0][0]
-                moveAction = self.awayDestAction(gameState, dest, actions)
-            else:
-                # move to food
-                moveAction = self.headDestAction(gameState, dest, actions)
-        else:
-            # move to enemy
-            if len(enemyDistList) > 0:
-                #dest = self.defencePos1
-                dest = enemyDistList[0][0]
-            moveAction = self.headDestAction(gameState, dest, actions)
-        return moveAction
+        #### actions ####
+        action = self.fetchCapsule(gameState)
+        if action is not None: return action
+        
+        action = self.fightGhost(gameState)
+        if action is not None: return action
+        
+        # move to nearest food
+        return self.headDestAction(gameState, dest, actions)
 
     def tryEatAction(self, gameState, oppPositions, actions):
         for action in actions:
@@ -224,7 +238,6 @@ class GeneralAgent(BaseAgent):
         self.mypos = self.myState.getPosition()
         actions = gameState.getLegalActions(self.index)
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
-        nFood = self.getNearFood(gameState, self.mypos)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         self.numTeamPacman = self.getNumPacman(gameState)
         enemyDistList = self.getNearEnemy(gameState, 3)
@@ -262,7 +275,6 @@ class GeneralAgent(BaseAgent):
                 moveAction = eatAction
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
-            print moveAction
 
         g_intorState[self.index] = self.mode
         return moveAction
