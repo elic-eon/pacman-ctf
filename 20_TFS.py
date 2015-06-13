@@ -129,7 +129,6 @@ class BaseAgent(CaptureAgent):
         enemyDistList = self.getNearEnemy(gameState, 2)
         actions = gameState.getLegalActions(self.index)
         nFood = self.getNearFood(gameState, self.mypos)
-        numTeamPacman = self.getNumPacman(gameState)
         dest = nFood
         # no food
         if nFood == None:
@@ -139,7 +138,7 @@ class BaseAgent(CaptureAgent):
         if self.getScore(gameState) >= self.pointToWin:
             self.mode = "defence"
         # not pacman and someone is pacman
-        if not self.myState.isPacman and numTeamPacman > 0:
+        if not self.myState.isPacman and self.numTeamPacman > 0:
             self.mode = "defence"
             dest = self.defencePos1
             
@@ -191,6 +190,7 @@ class GeneralAgent(BaseAgent):
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
         nFood = self.getNearFood(gameState, self.mypos)
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
+        self.numTeamPacman = self.getNumPacman(gameState)
         enemyDistList = self.getNearEnemy(gameState, 3)
         eatenFood = self.checkDefendFood(gameState)
 
@@ -218,7 +218,7 @@ class GeneralAgent(BaseAgent):
             if self.getScore(gameState) >= self.pointToWin:
                 self.mode = "defence"
             # only one pacman in one time
-            if numTeamPacman > 0:
+            if self.numTeamPacman > 0:
                 self.mode = "defence"
             if "attack" in g_intorState or "start" in g_intorState:
                 self.mode = "defence"
