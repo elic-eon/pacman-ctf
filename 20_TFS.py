@@ -40,6 +40,7 @@ class BaseAgent(CaptureAgent):
         self.oppIndces = self.getOpponents(gameState)
         self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
+        self.deadEnd = self.buildDeadEnd(gameState)
         self.pointToWin = 200
         self.defendFood = self.getFoodYouAreDefending(gameState).asList()
 
@@ -47,6 +48,40 @@ class BaseAgent(CaptureAgent):
             g_intorState[self.index-1] = None
         else:
             g_intorState[self.index+1] = None
+            
+    def degree(self, gameState, pos):
+        x, y = pos
+        degree = 0
+        for neighbor in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
+            if not self.walls[neighbor[0]][neighbor[1]]:
+                degree += 1
+        return degree
+            
+    def buildDeadEnd(self, gameState):
+        width = gameState.data.layout.width
+        height = gameState.data.layout.height
+        deadEnd = game.Grid(gameState.data.layout.width, gameState.data.layout.height)
+        deadEndList = []
+        tmp = game.Grid(gameState.data.layout.width, gameState.data.layout.height)
+        for x in range(width):
+            for y in range(height):
+                if not self.walls[x][y]:
+                    degree = self.degree(gameState, (x,y))
+                    if degree <= 1:
+                        deadEnd[x][y] = True
+                        deadEndList.append((x,y))
+                    elif degree == 2:
+                        tmp[x][y] = True
+                        
+        for x, y in deadEndList:
+            for neighbor in [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]:
+                if tmp[neighbor[0]][neighbor[1]]:
+                    tmp[neighbor[0]][neighbor[1]] = False
+                    deadEnd[neighbor[0]][neighbor[1]] = True
+                    deadEndList.append(neighbor)
+
+        return deadEnd
+                
 
     def chooseAction(self, gameState):
         actions = gameState.getLegalActions(self.index)
