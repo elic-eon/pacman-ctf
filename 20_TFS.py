@@ -18,12 +18,16 @@ import random, time, util
 from game import Directions
 import game
 from util import nearestPoint
+import copy
 
 #################
 # Team creation #
 #################
 
 g_intorState = ["start", "start", "start", "start", "start", "start"]
+firstAgentSight = []
+secondAgentSight = []
+thirdAgentSight = []
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
                first = 'TopLaneAgent', second = 'MidLaneAgent', third = 'BotLaneAgent'):
@@ -223,7 +227,58 @@ class BaseAgent(CaptureAgent):
             #self.defendFood = defendFoodNow
             return list(eatenFood)
         return None
-
+    
+    def getNoiseDistance(self, gameState) :
+        if self.idx == min(self.teamIndces) :
+            firstAgentSight = gameState.getAgentDistances()
+        elif self.idx == max(self.teamIndces) :
+            thirdAgentSight = gameState.getAgentDistances()
+        else :
+            secondAgentSight = gameState.getAgentDistances()
+    
+    def getnoiseOppDistance(self, gameState, oppIdx) :
+        region1 = []
+        region2 = []
+        region3 = []        
+        #get !walls position
+        notWalls = copy.deepcopy(self.walls) 
+        for x in range(0, 32) :
+            for y in range(0, 16) :
+                if notWalls[x][y] == True :
+                    notWalls[x][y] = False
+                else :
+                    notWalls[x][y] = True
+        pos1 = gameState.getAgentPosition(self.teamIndces[0])
+        pos2 = gameState.getAgentPosition(self.teamIndces[1])
+        pos3 = gameState.getAgentPosition(self.teamIndces[2])
+        #draw three regions
+        for pos in notWalls.asList() :
+            if self.getMazeDistance(pos, pos1) <= firstAgentSight[oppIdx] :
+                region1.append(pos)
+            if self.getMazeDistance(pos, pos2) <= secondAgentSight[oppIdx] :
+                region2.append(pos)
+            if self.getMazeDistance(pos, pos3) <= thirdAgentSight[oppIdx] :
+                region3.append(pos)
+        #find intersection of three regions
+        set123 = set(region1) & set(region2) & set(region3)
+        if len(list(set123)) != 0 :
+            return list(set123)
+        #find intersection of two regions 
+        set12 = set(region1) & set(region2)
+        if len(list(set12)) != 0 :
+            return list(set12)
+        set13 = set(region1) & set(region3)
+        if len(list(set13)) != 0 :
+            return list(set13)
+        set23 = set(region2) & set(region3)
+        if len(list(set23)) != 0 :
+            return list(set23)
+        #no intersection
+        x = int((pos1[0]+pos2[0]+pos3[0])/3)
+        y = int((pos1[1]+pos2[1]+pos3[1])/3)
+        return [(x,y)]
+        
+        
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
