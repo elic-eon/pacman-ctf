@@ -222,21 +222,32 @@ class BaseAgent(CaptureAgent):
 
         return 100
         
+    def manhattanDist(self, pos1, pos2):
+        return abs(pos1[0]-pos2[0]) + abs(pos1[1]-pos2[1])
+        
     def updateWalls(self, gameState):
-        if self.myState.isPacman:
-            walls = gameState.getWalls().deepCopy()
-            for idx in self.getOpponents(gameState):
-                pos = gameState.getAgentPosition(idx)
-                if pos is not None: 
-                    if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
-                        x, y = pos
-                        walls[x][y] = True
-                        walls[x+1][y] = True
-                        walls[x-1][y] = True
-                        walls[x][y+1] = True
-                        walls[x][y-1] = True
-                        
-            self.wallMemory = walls
+        width = gameState.data.layout.width
+        height = gameState.data.layout.height
+        update = False
+        for idx in self.getOpponents(gameState):
+            pos = gameState.getAgentPosition(idx)
+            if pos is not None: 
+                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                    update = True
+                    
+        if not update: return
+
+        walls = gameState.getWalls().deepCopy()
+        for idx in self.getOpponents(gameState):
+            pos = gameState.getAgentPosition(idx)
+            if pos is not None: 
+                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                    for x in range(width):
+                        for y in range(height):
+                            if not walls[x][y] and self.getMazeDistance((x,y), pos) <= 3:
+                                walls[x][y] = True
+                    
+        self.wallMemory = walls
         
     def offenceAction(self, gameState):
         # near enemy distance less than 2
@@ -273,7 +284,7 @@ class BaseAgent(CaptureAgent):
         if action is not None: return action
         
         # move to nearest food
-        self.headDestAction(gameState, self.defencePos1, actions)
+        return self.headDestAction(gameState, self.defencePos1, actions)
 
     def tryEatAction(self, gameState, oppPositions, actions):
         for action in actions:
