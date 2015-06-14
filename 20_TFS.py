@@ -165,7 +165,7 @@ class BaseAgent(CaptureAgent):
             if dist > bestDistance and not self.deadEnd[posNow[0]][posNow[1]]:
                 bestAction = action
                 bestDistance = dist
-        if bestAction is None: return actions[0]
+        if bestAction is None: return self.fetchFood(gameState)
         else: return bestAction
 
     def fetchCapsule(self, gameState):
@@ -181,8 +181,9 @@ class BaseAgent(CaptureAgent):
             flagPos = self.getFlags(gameState)[0]
             if self.getMazeDistance(self.mypos, flagPos) <= 3:
                 return self.headDestAction(gameState, flagPos, actions)
-
-    def fightGhost(self, gameState):
+    
+    
+    def avoidGhost(self, gameState):
         actions = gameState.getLegalActions(self.index)
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
@@ -192,24 +193,50 @@ class BaseAgent(CaptureAgent):
                         self.getMazeDistance(self.mypos, pos) <= 3):
                     return self.awayDestAction(gameState, pos, actions)
 
+    def chaseGhost(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        dist = 100
+        target = None
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
-                if (not gameState.getAgentState(idx).isPacman and
-                        gameState.getAgentState(idx).scaredTimer > 0):
-                    return self.headDestAction(gameState, pos, actions)
+                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer > 0:
+                    if self.getMazeDistance(self.mypos, pos) < dist:
+                        target = pos
+
+        if target is not None:
+            return self.headDestAction(gameState, target, actions)
+
+    def fightGhost(self, gameState):
+        action = self.avoidGhost(gameState)
+        if action is not None: return action
+
+        action = self.chaseGhost(gameState)
+        if action is not None: return action
 
     def fetchFood(self, gameState):
         actions = gameState.getLegalActions(self.index)
+        deadEnd = self.deadEnd
         foodList = self.getFood(gameState).asList()
         if len(foodList) != 0:
-            dist = 100
-            finalAction = None
+            for action in actions:
+                nextState = self.getSuccessor(gameState, action)
+                nextPos = nextState.getAgentPosition(self.index)
+                if nextPos in foodList and deadEnd[nextPos[0]][nextPos[1]]:
+                    return action
+                    
             for action in actions:
                 nextState = self.getSuccessor(gameState, action)
                 nextPos = nextState.getAgentPosition(self.index)
                 if nextPos in foodList:
                     return action
+                    
+            dist = 100
+            finalAction = None
+            for action in actions:
+                nextState = self.getSuccessor(gameState, action)
+                nextPos = nextState.getAgentPosition(self.index)
+                
                 bfsDist = self.BFS(gameState, nextPos)
                 if bfsDist < dist:
                     dist = bfsDist
