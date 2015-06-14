@@ -186,6 +186,8 @@ class BaseAgent(CaptureAgent):
     
     def avoidGhost(self, gameState):
         actions = gameState.getLegalActions(self.index)
+        foodList = self.getFood(gameState).asList()
+        actionList = []
         threatList = []
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
@@ -206,7 +208,15 @@ class BaseAgent(CaptureAgent):
                         leave = False
                         
                 if leave:
-                    return action
+                    actionList.append(action)
+        
+        for action in actionList:
+            nextState = self.getSuccessor(gameState, action)
+            if nextState.getAgentPosition(self.index) in foodList:
+                return action
+                
+        if len(actionList) != 0:
+            return actionList[0]
 
     def chaseGhost(self, gameState):
         actions = gameState.getLegalActions(self.index)
