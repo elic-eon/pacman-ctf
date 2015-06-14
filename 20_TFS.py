@@ -28,6 +28,7 @@ g_intorState = [None, None, None, None, None, None]
 global firstAgentSight
 global secondAgentSight
 global thirdAgentSight
+global defendFoodList
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
                first = 'TopLaneAgent', second = 'MidLaneAgent', third = 'BotLaneAgent'):
@@ -39,16 +40,17 @@ def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
 
 class BaseAgent(CaptureAgent):
     def registerInitialState(self, gameState):
+        global defendFoodList
         CaptureAgent.registerInitialState(self, gameState)
         self.start = gameState.getAgentPosition(self.index)
         self.oppIndces = self.getOpponents(gameState)
         self.teamIndces = self.getTeam(gameState)
         self.walls = gameState.getWalls()
         self.deadEnd = self.buildDeadEnd(gameState)
-        self.pointToWin = 60
-        self.defendFood = self.getFoodYouAreDefending(gameState).asList()
+        self.pointToWin = 100
         g_intorState[self.index] = "start"
-
+        defendFoodList = self.getFoodYouAreDefending(gameState).asList()
+        
     def degree(self, gameState, pos):
         x, y = pos
         degree = 0
@@ -299,11 +301,14 @@ class BaseAgent(CaptureAgent):
             return None
 
     def checkDefendFood(self, gameState) :
+        global defendFoodList
         defendFoodNow = self.getFoodYouAreDefending(gameState).asList()
-        if len(self.defendFood) != len(defendFoodNow) :
-            eatenFood = set(self.defendFood)^set(defendFoodNow)
-            #self.defendFood = defendFoodNow
-            return list(eatenFood)
+        if len(defendFoodList) != len(defendFoodNow) :
+            eatenFood = list(set(defendFoodList)^set(defendFoodNow))[0]
+            if self.index > 0 :
+                return (self.index-1, eatenFood)
+            else :
+                return (5, eatenFood)
         return None
     
     def getManhattanDistance(self, pos1, pos2) :
@@ -346,16 +351,16 @@ class BaseAgent(CaptureAgent):
         pos3 = gameState.getAgentPosition(self.teamIndces[2])
         #draw three regions
         for pos in notWalls.asList() :
-            if self.getManhattanDistance(pos, pos1) <= firstAgentSight[oppIdx] + 6  and self.getManhattanDistance(pos, pos1) >= firstAgentSight[oppIdx] - 6:
+            if self.getManhattanDistance(pos, pos1) <= firstAgentSight[oppIdx] + 5  and self.getManhattanDistance(pos, pos1) >= firstAgentSight[oppIdx] - 5:
                 region1.append(pos)
-            if self.getManhattanDistance(pos, pos2) <= secondAgentSight[oppIdx] + 6 and self.getManhattanDistance(pos, pos2) >= secondAgentSight[oppIdx] - 6:
+            if self.getManhattanDistance(pos, pos2) <= secondAgentSight[oppIdx] + 5 and self.getManhattanDistance(pos, pos2) >= secondAgentSight[oppIdx] - 5:
                 region2.append(pos)
-            if self.getManhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 6 and self.getManhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 6:
+            if self.getManhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 5 and self.getManhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 5:
                 region3.append(pos)
         #find intersection of three regions
         intersectionRegion = set(region1) & set(region2) & set(region3)
         RegionSet = list(intersectionRegion)
-        RegionSet.sort()
+        #RegionSet.sort()
         if len(RegionSet) == 0 :
             return None
         else :
@@ -378,6 +383,7 @@ class BaseAgent(CaptureAgent):
 
 class GeneralAgent(BaseAgent):
     def chooseAction(self, gameState):
+        global defendFoodList
         self.myState = gameState.getAgentState(self.index)
         self.mypos = self.myState.getPosition()
         actions = gameState.getLegalActions(self.index)
@@ -385,16 +391,16 @@ class GeneralAgent(BaseAgent):
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         self.numTeamPacman = self.getNumPacman(gameState)
         enemyDistList = self.getNearEnemy(gameState, 3)
-        eatenFood = self.checkDefendFood(gameState)
-
+        
         self.mode = g_intorState[self.index]
         self.getNoiseDistance(gameState)
         # respawn
-        if self.mypos == self.start:
-            self.mode = "start"
-            self.wallMemory = gameState.getWalls().deepCopy()
+        if self.mypos == self.start and self.mode != "start":
+            self.mode = "attack"
 
         if self.mode == "start":
+            if self.mypos == self.start:
+                self.wallMemory = gameState.getWalls().deepCopy()
             if len(enemyDistList) > 0:
                 dist = enemyDistList[0][0]
             else:
@@ -435,6 +441,7 @@ class GeneralAgent(BaseAgent):
             moveAction = self.offenceAction(gameState)
 
         g_intorState[self.index] = self.mode
+        defendFoodList = self.getFoodYouAreDefending(gameState).asList()
         return moveAction
 
 class TopLaneAgent(GeneralAgent):
