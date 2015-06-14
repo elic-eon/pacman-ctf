@@ -51,6 +51,7 @@ class BaseAgent(CaptureAgent):
         self.deadEnd = self.buildDeadEnd(gameState)
         self.pointToWin = 100
         self.wallMemory = gameState.getWalls().deepCopy()
+        self.blockers = []
         g_intorState = [None, None, None, None, None, None]
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
 
@@ -297,28 +298,31 @@ class BaseAgent(CaptureAgent):
     def updateWalls(self, gameState):
         width = gameState.data.layout.width
         height = gameState.data.layout.height
-        update = False
-        for idx in self.getOpponents(gameState):
-            pos = gameState.getAgentPosition(idx)
-            if pos is not None:
-                if (not gameState.getAgentState(idx).isPacman and
-                        gameState.getAgentState(idx).scaredTimer == 0 and
-                        self.getMazeDistance(self.mypos, pos) <= 3):
-                    update = True
-
-        if not update: return
-
         walls = gameState.getWalls().deepCopy()
+        for blocker in self.blockers:
+            if blocker[0] <= 0:
+                self.blockers.remove(blocker)
+            else:
+                blocker[0] -= 1
+
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
                 if (not gameState.getAgentState(idx).isPacman and
                         gameState.getAgentState(idx).scaredTimer == 0 and
                         self.getMazeDistance(self.mypos, pos) <= 3):
+                    newBlocker = game.Grid(width, height)
                     for x in range(width):
                         for y in range(height):
                             if not walls[x][y] and self.getMazeDistance((x,y), pos) <= 3:
-                                walls[x][y] = True
+                                newBlocker[x][y] = True
+                    self.blockers.append([20, newBlocker])
+                    
+        for blocker in self.blockers:
+            for x in range(width):
+                for y in range(height):
+                    if blocker[1][x][y] == True:
+                        walls[x][y] = True
 
         self.wallMemory = walls
 
