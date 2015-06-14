@@ -333,6 +333,7 @@ class BaseAgent(CaptureAgent):
         # no food
         if nFood == None:
             self.mode = "defence"
+            dest = self.defencePos1
         # can win
         if self.getScore(gameState) >= self.pointToWin:
             self.mode = "lock"
