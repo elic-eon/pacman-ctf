@@ -507,6 +507,7 @@ class GeneralAgent(BaseAgent):
 
         # mode write back
         g_intorState[self.index] = self.mode
+        #update defendFoodList
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
         return moveAction
 
