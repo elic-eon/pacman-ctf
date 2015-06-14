@@ -18,13 +18,14 @@ import random, time, util
 from game import Directions
 import game
 from util import nearestPoint
+from util import manhattanDistance
 import copy
 
 #################
 # Team creation #
 #################
 
-g_intorState = [None, None, None, None, None, None]
+global g_intorState
 global firstAgentSight
 global secondAgentSight
 global thirdAgentSight
@@ -41,6 +42,7 @@ def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
 class BaseAgent(CaptureAgent):
     def registerInitialState(self, gameState):
         global defendFoodList
+        global g_intorState
         CaptureAgent.registerInitialState(self, gameState)
         self.start = gameState.getAgentPosition(self.index)
         self.oppIndces = self.getOpponents(gameState)
@@ -48,7 +50,8 @@ class BaseAgent(CaptureAgent):
         self.walls = gameState.getWalls()
         self.deadEnd = self.buildDeadEnd(gameState)
         self.pointToWin = 100
-        g_intorState[self.index] = "start"
+        self.wallMemory = gameState.getWalls().deepCopy()
+        g_intorState = [None, None, None, None, None, None]
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
 
     def degree(self, gameState, pos):
@@ -83,10 +86,6 @@ class BaseAgent(CaptureAgent):
 
         return deadEnd
 
-    def chooseAction(self, gameState):
-        actions = gameState.getLegalActions(self.index)
-        return random.choice(actions)
-
     def getNearFood(self, gameState, pos):
         foodList = self.getFood(gameState).asList()
         nFood = None
@@ -99,21 +98,28 @@ class BaseAgent(CaptureAgent):
         return nFood
 
     def getEnemy(self, gameState):
-        i = []
+        maybeEnemy = self.checkDefendFood(gameState)
+        l = []
         for index in self.oppIndces:
             agentPosition = gameState.getAgentPosition(index)
             if agentPosition is not None:
-                i += [agentPosition]
-        #print(i)
-        return i
+                l += [(index, agentPosition)]
+            elif (maybeEnemy is not None and
+                    index == maybeEnemy[0]):
+                l += [(maybeEnemy)]
+            else:
+                noise = self.getnoiseOppDistance(gameState, index)
+                if noise is not None:
+                    l += [(index, self.getnoiseOppDistance(gameState, index))]
+        return l
 
     def getNearEnemy(self, gameState, myfilter = 9999):
         enemyList = self.getEnemy(gameState)
         distList = []
         for enemy in enemyList:
-            dist = self.getMazeDistance(self.mypos, enemy)
+            dist = self.getMazeDistance(self.mypos, enemy[1])
             if dist <= myfilter:
-                distList += [(enemy, dist)]
+                distList += [(enemy[0], enemy[1], dist)]
         return distList
 
     def getTeamAgentState(self, gameState):
@@ -181,13 +187,16 @@ class BaseAgent(CaptureAgent):
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
-                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                if (not gameState.getAgentState(idx).isPacman and
+                        gameState.getAgentState(idx).scaredTimer == 0 and
+                        self.getMazeDistance(self.mypos, pos) <= 3):
                     return self.awayDestAction(gameState, pos, actions)
 
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
-                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer > 0:
+                if (not gameState.getAgentState(idx).isPacman and
+                        gameState.getAgentState(idx).scaredTimer > 0):
                     return self.headDestAction(gameState, pos, actions)
 
     def fetchFood(self, gameState):
@@ -237,7 +246,9 @@ class BaseAgent(CaptureAgent):
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
-                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                if (not gameState.getAgentState(idx).isPacman and
+                        gameState.getAgentState(idx).scaredTimer == 0 and
+                        self.getMazeDistance(self.mypos, pos) <= 3):
                     update = True
 
         if not update: return
@@ -246,7 +257,9 @@ class BaseAgent(CaptureAgent):
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
-                if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
+                if (not gameState.getAgentState(idx).isPacman and
+                        gameState.getAgentState(idx).scaredTimer == 0 and
+                        self.getMazeDistance(self.mypos, pos) <= 3):
                     for x in range(width):
                         for y in range(height):
                             if not walls[x][y] and self.getMazeDistance((x,y), pos) <= 3:
@@ -255,8 +268,6 @@ class BaseAgent(CaptureAgent):
         self.wallMemory = walls
 
     def offenceAction(self, gameState):
-        # near enemy distance less than 2
-        enemyDistList = self.getNearEnemy(gameState, 2)
         actions = gameState.getLegalActions(self.index)
         nFood = self.getNearFood(gameState, self.mypos)
         dest = nFood
@@ -289,7 +300,7 @@ class BaseAgent(CaptureAgent):
         if action is not None: return action
 
         # move to nearest food
-        return self.headDestAction(gameState, self.defencePos1, actions)
+        return self.headDestAction(gameState, dest, actions)
 
     def tryEatAction(self, gameState, oppPositions, actions):
         for action in actions:
@@ -311,17 +322,6 @@ class BaseAgent(CaptureAgent):
                 return (5, eatenFood)
         return None
 
-    def getManhattanDistance(self, pos1, pos2) :
-        if pos1[0] > pos2[0] :
-            x = pos1[0] - pos2[0]
-        else :
-            x = pos2[0] - pos1[0]
-        if pos1[1] > pos2[1] :
-            y = pos1[1] - pos2[1]
-        else :
-            y = pos2[1] - pos1[1]
-        return x+y
-
     def getNoiseDistance(self, gameState) :
         global firstAgentSight
         global secondAgentSight
@@ -340,29 +340,26 @@ class BaseAgent(CaptureAgent):
         region1 = []
         region2 = []
         region3 = []
-        #get !walls position
-        notWalls = copy.deepcopy(self.walls)
-        for x in range(0, 32) :
-            for y in range(0, 16) :
-                if notWalls[x][y] == False :
-                    notWalls[x][y] = True
         pos1 = gameState.getAgentPosition(self.teamIndces[0])
         pos2 = gameState.getAgentPosition(self.teamIndces[1])
         pos3 = gameState.getAgentPosition(self.teamIndces[2])
-        #draw three regions
-        for pos in notWalls.asList() :
-            if self.getManhattanDistance(pos, pos1) <= firstAgentSight[oppIdx] + 5  and self.getManhattanDistance(pos, pos1) >= firstAgentSight[oppIdx] - 5:
-                region1.append(pos)
-            if self.getManhattanDistance(pos, pos2) <= secondAgentSight[oppIdx] + 5 and self.getManhattanDistance(pos, pos2) >= secondAgentSight[oppIdx] - 5:
-                region2.append(pos)
-            if self.getManhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 5 and self.getManhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 5:
-                region3.append(pos)
+        # draw three regions
+        for x in range(0, 32) :
+            for y in range(0, 16) :
+                pos = (x, y)
+                if (manhattanDistance(pos, pos1) <= firstAgentSight[oppIdx] + 6 and
+                        manhattanDistance(pos, pos1) >= firstAgentSight[oppIdx] - 6):
+                    region1.append(pos)
+                if (manhattanDistance(pos, pos2) <= secondAgentSight[oppIdx] + 6 and
+                        manhattanDistance(pos, pos2) >= secondAgentSight[oppIdx] - 6):
+                    region2.append(pos)
+                if (manhattanDistance(pos, pos3) <= thirdAgentSight[oppIdx] + 6 and
+                        manhattanDistance(pos, pos3) >= thirdAgentSight[oppIdx] - 6):
+                    region3.append(pos)
         #find intersection of three regions
         intersectionRegion = set(region1) & set(region2) & set(region3)
         RegionSet = list(intersectionRegion)
-        #RegionSet.sort()
-        if len(RegionSet) == 0 :
-            return None
+        if len(RegionSet) == 0 : return None
         else :
             posx = 0
             posy = 0
@@ -371,7 +368,23 @@ class BaseAgent(CaptureAgent):
                 posy += pos[1]
             posx /= len(RegionSet)
             posy /= len(RegionSet)
-            return (posx, posy)
+            retPos = (posx, posy)
+            if self.walls[posx][posy]:
+                l_x = [-1, 0, 1]
+                l_y = [-1, 0, 1]
+                random.shuffle(l_x)
+                random.shuffle(l_y)
+                for fuzzy_x in l_x:
+                    for fuzzy_y in l_y:
+                        fuzzy_retPos = (retPos[0]+fuzzy_x, retPos[1]+fuzzy_y)
+                        if not self.walls[fuzzy_retPos[0]][fuzzy_retPos[1]]:
+                            return fuzzy_retPos
+            else:
+                return retPos
+
+    def chooseAction(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        return random.choice(actions)
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
@@ -384,70 +397,100 @@ class BaseAgent(CaptureAgent):
 class GeneralAgent(BaseAgent):
     def chooseAction(self, gameState):
         global defendFoodList
+
+        # update info every time
         self.myState = gameState.getAgentState(self.index)
         self.mypos = self.myState.getPosition()
+        self.numTeamPacman = self.getNumPacman(gameState)
+        # TODO update pointToWin each time
+
+        # update global noise sight
+        self.getNoiseDistance(gameState)
+
         actions = gameState.getLegalActions(self.index)
         oppPositions = [gameState.getAgentPosition(index) for index in self.oppIndces]
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
-        self.numTeamPacman = self.getNumPacman(gameState)
-        enemyDistList = self.getNearEnemy(gameState, 3)
+        enemyDistList = self.getNearEnemy(gameState, 2)
 
+        #print(self.getNearEnemy(gameState, 999))
+        # read mode from golbal
         self.mode = g_intorState[self.index]
-        self.getNoiseDistance(gameState)
-        # respawn
+
         if self.mypos == self.start and self.mode != "start":
+            # respawn
+            # no disturb two defender state
             self.mode = "attack"
 
         if self.mode == "start":
+            # game start try to go to defence pos1
             if self.mypos == self.start:
                 self.wallMemory = gameState.getWalls().deepCopy()
+
             if len(enemyDistList) > 0:
+                # enemy near here
                 dist = enemyDistList[0][0]
             else:
                 dist = self.defencePos1
+
             moveAction = self.headDestAction(gameState, dist , actions)
             successor = self.getSuccessor(gameState, moveAction)
             nextPos = successor.getAgentPosition(self.index)
-            # on defence postion
+
             if nextPos == self.defencePos1:
+                # on defence postion
                 self.mode = "defence"
             if eatAction:
                 moveAction = eatAction
+
         elif self.mode == "defence":
-            for index in self.oppIndces:
-                print(self.getnoiseOppDistance(gameState, index))
+            ### mode check ###
+            if self.getScore(gameState) >= self.pointToWin:
+                # enough poing to win
+                self.mode = "lock"
+            elif (self.numTeamPacman > 0 or
+                    "attack" in g_intorState):
+                # only one pacman in one time
+                self.mode = "defence"
+            else:
+                self.mode = "attack"
+
+            # mostly two defender mode
             if self.getNumState("defence") == 3:
+                # three defender
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
             elif self.getNumState("defence") == 2:
+                # two defender
                 moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
             elif self.getNumState("defence") == 1:
+                # one defender but should never happen
                 moveAction = self.headDestAction(gameState, self.defencePos3, actions)
-            self.mode = "attack"
-            # enough poing to win
-            if self.getScore(gameState) >= self.pointToWin:
-                self.mode = "lock"
-            # only one pacman in one time
-            if self.numTeamPacman > 0:
-                self.mode = "defence"
-            if "attack" in g_intorState:
-                self.mode = "defence"
+
             if eatAction:
                 moveAction = eatAction
+
         elif self.mode == "lock":
             moveAction = self.headDestAction(gameState, self.lockPos, actions)
+            if self.getScore(gameState) < self.pointToWin:
+                self.mode = "defence"
             if eatAction:
                 moveAction = eatAction
+
         elif self.mode == "attack":
             moveAction = self.offenceAction(gameState)
 
+        # mode write back
         g_intorState[self.index] = self.mode
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
         return moveAction
 
 class TopLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
+        global g_intorState
+        global firstAgentSight
+        firstAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        g_intorState[self.index] = self.mode
         if self.red:
             self.defencePos1 = (12, 13)
             self.defencePos2 = (12, 13)
@@ -461,8 +504,12 @@ class TopLaneAgent(GeneralAgent):
 
 class MidLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
+        global g_intorState
+        global secondAgentSight
+        secondAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        g_intorState[self.index] = self.mode
         if self.red:
             self.defencePos1 = (13, 7)
             self.defencePos2 = (12, 13)
@@ -476,8 +523,12 @@ class MidLaneAgent(GeneralAgent):
 
 class BotLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
+        global g_intorState
+        global thirdAgentSight
+        thirdAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        g_intorState[self.index] = self.mode
         if self.red:
             self.defencePos1 = (11, 2)
             self.defencePos2 = (6, 5)
