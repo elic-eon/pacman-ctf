@@ -179,11 +179,25 @@ class BaseAgent(CaptureAgent):
     
     def avoidGhost(self, gameState):
         actions = gameState.getLegalActions(self.index)
+        threatList = []
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
             if pos is not None:
                 if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
-                    return self.awayDestAction(gameState, pos, actions)
+                    threatList.append(pos)
+                    
+        if len(threatList) != 0:
+            nowPos = self.mypos
+            for action in actions:
+                leave = True
+                nextState = self.getSuccessor(gameState, action)
+                nextPos = nextState.getAgentPosition(self.index)
+                for pos in threatList:
+                    if self.getMazeDistance(nowPos, pos) >= self.getMazeDistance(nextPos, pos) or self.deadEnd[nextPos[0]][nextPos[1]]:
+                        leave = False
+                        
+                if leave:
+                    return action
 
     def chaseGhost(self, gameState):
         actions = gameState.getLegalActions(self.index)
@@ -205,6 +219,20 @@ class BaseAgent(CaptureAgent):
 
         action = self.chaseGhost(gameState)
         if action is not None: return action
+        
+    def inDanger(self, gameState):
+        danger = False
+        nowPos = self.mypos
+        for idx in self.getOpponents(gameState):
+            if gameState.getAgentPosition(idx) is not None:
+                pos = gameState.getAgentPosition(idx)
+                if self.getManhattanDistance(nowPos, pos) <= 6:
+                    return True
+            else:
+                dist = gameState.getAgentDistances()[idx]
+                if dist <= 6:
+                    return True
+        return danger
 
     def fetchFood(self, gameState):
         actions = gameState.getLegalActions(self.index)

@@ -1,1 +1,1 @@
-python capture.py -r 20_TFS
+python capture.py -r 20_TFS --record
