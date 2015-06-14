@@ -119,7 +119,7 @@ class BaseAgent(CaptureAgent):
         for enemy in enemyList:
             dist = self.getMazeDistance(self.mypos, enemy[1])
             if dist <= myfilter:
-                distList += [(enemy[0], enemy[1], dist)]
+                distList += [(dist, enemy[0], enemy[1])]
         return distList
 
     def getTeamAgentState(self, gameState):
@@ -455,7 +455,7 @@ class GeneralAgent(BaseAgent):
 
             if len(enemyDistList) > 0:
                 # enemy near here
-                dist = enemyDistList[0][0]
+                dist = enemyDistList[0][2]
             else:
                 dist = self.defencePos1
 
@@ -487,13 +487,22 @@ class GeneralAgent(BaseAgent):
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
             elif self.getNumState("defence") == 2:
                 # two defender
-                moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
+                defNearEnemyList = self.getNearEnemy(gameState, 10)
+                defNearEnemyList.sort()
+                #print(defNearEnemyList)
+                if (len(defNearEnemyList) > 0):
+                    moveAction = self.headDestAction(gameState, defNearEnemyList[0][2] , actions)
+                else:
+                    moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
             elif self.getNumState("defence") == 1:
                 # one defender but should never happen
                 moveAction = self.headDestAction(gameState, self.defencePos3, actions)
 
             if eatAction:
                 moveAction = eatAction
+            successor = self.getSuccessor(gameState, moveAction)
+            if successor.getAgentState(self.index).isPacman:
+                moveAction = Directions.STOP
 
         elif self.mode == "lock":
             moveAction = self.headDestAction(gameState, self.lockPos, actions)
