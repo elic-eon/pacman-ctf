@@ -50,7 +50,7 @@ class BaseAgent(CaptureAgent):
         self.pointToWin = 100
         g_intorState[self.index] = "start"
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
-        
+
     def degree(self, gameState, pos):
         x, y = pos
         degree = 0
@@ -180,13 +180,13 @@ class BaseAgent(CaptureAgent):
         actions = gameState.getLegalActions(self.index)
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
-            if pos is not None: 
+            if pos is not None:
                 if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
                     return self.awayDestAction(gameState, pos, actions)
 
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
-            if pos is not None: 
+            if pos is not None:
                 if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer > 0:
                     return self.headDestAction(gameState, pos, actions)
 
@@ -229,41 +229,41 @@ class BaseAgent(CaptureAgent):
             positionQueue.pop(0)
 
         return 100
-        
+
     def updateWalls(self, gameState):
         width = gameState.data.layout.width
         height = gameState.data.layout.height
         update = False
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
-            if pos is not None: 
+            if pos is not None:
                 if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
                     update = True
-                    
+
         if not update: return
 
         walls = gameState.getWalls().deepCopy()
         for idx in self.getOpponents(gameState):
             pos = gameState.getAgentPosition(idx)
-            if pos is not None: 
+            if pos is not None:
                 if not gameState.getAgentState(idx).isPacman and gameState.getAgentState(idx).scaredTimer == 0 and self.getMazeDistance(self.mypos, pos) <= 3:
                     for x in range(width):
                         for y in range(height):
                             if not walls[x][y] and self.getMazeDistance((x,y), pos) <= 3:
                                 walls[x][y] = True
-                    
+
         self.wallMemory = walls
-        
+
     def offenceAction(self, gameState):
         # near enemy distance less than 2
         enemyDistList = self.getNearEnemy(gameState, 2)
         actions = gameState.getLegalActions(self.index)
         nFood = self.getNearFood(gameState, self.mypos)
         dest = nFood
-        
+
         self.updateWalls(gameState)
-        
-        #### state change #### 
+
+        #### state change ####
         # no food
         if nFood == None:
             self.mode = "defence"
@@ -281,13 +281,13 @@ class BaseAgent(CaptureAgent):
 
         action = self.fightGhost(gameState)
         if action is not None: return action
-        
+
         action = self.fetchFlag(gameState)
         if action is not None: return action
-        
+
         action = self.fetchFood(gameState)
         if action is not None: return action
-        
+
         # move to nearest food
         return self.headDestAction(gameState, self.defencePos1, actions)
 
@@ -310,7 +310,7 @@ class BaseAgent(CaptureAgent):
             else :
                 return (5, eatenFood)
         return None
-    
+
     def getManhattanDistance(self, pos1, pos2) :
         if pos1[0] > pos2[0] :
             x = pos1[0] - pos2[0]
@@ -321,7 +321,7 @@ class BaseAgent(CaptureAgent):
         else :
             y = pos2[1] - pos1[1]
         return x+y
-            
+
     def getNoiseDistance(self, gameState) :
         global firstAgentSight
         global secondAgentSight
@@ -341,11 +341,11 @@ class BaseAgent(CaptureAgent):
         region2 = []
         region3 = []
         #get !walls position
-        notWalls = copy.deepcopy(self.walls) 
+        notWalls = copy.deepcopy(self.walls)
         for x in range(0, 32) :
             for y in range(0, 16) :
                 if notWalls[x][y] == False :
-                    notWalls[x][y] = True               
+                    notWalls[x][y] = True
         pos1 = gameState.getAgentPosition(self.teamIndces[0])
         pos2 = gameState.getAgentPosition(self.teamIndces[1])
         pos3 = gameState.getAgentPosition(self.teamIndces[2])
@@ -391,7 +391,7 @@ class GeneralAgent(BaseAgent):
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         self.numTeamPacman = self.getNumPacman(gameState)
         enemyDistList = self.getNearEnemy(gameState, 3)
-        
+
         self.mode = g_intorState[self.index]
         self.getNoiseDistance(gameState)
         # respawn
