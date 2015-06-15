@@ -488,6 +488,15 @@ class BaseAgent(CaptureAgent):
 
 class GeneralAgent(BaseAgent):
     def chooseAction(self, gameState):
+        try: 
+            retAction = self.wrap_chooseAction(gameState)
+            if retAction not in gameState.getLegalActions(self.index):
+                return Directions.STOP
+            else:
+                return retAction
+        except:
+            return Directions.STOP
+    def wrap_chooseAction(self, gameState):
         global defendFoodList
 
         # update info every time
