@@ -540,6 +540,8 @@ class GeneralAgent(BaseAgent):
                     "attack" in g_intorState):
                 # only one pacman in one time
                 self.mode = "defence"
+            elif self.lane == "bot":
+                self.mode = "defence"
             else:
                 self.mode = "attack"
 
@@ -558,18 +560,26 @@ class GeneralAgent(BaseAgent):
                         self.numTeamPacman == 1)
                     ):
                 # two defender
-                defNearEnemyList = self.getNearEnemy(gameState, 5)
-                defNearEnemyList.sort()
-                defEnemyList = self.getEnemyDist(gameState, 10, self.defencePos2)
-                defEnemyList.sort()
-                #print(defNearEnemyList)
+                if (self.lane == "top" or self.lane == "mid"):
+                    defNearEnemyList = self.getNearEnemy(gameState, 3)
+                    defNearEnemyList.sort()
+                    defEnemyList = self.getEnemyDist(gameState, 6, self.defencePos2)
+                    defEnemyList.sort()
+                else:
+                    defNearEnemyList = self.getNearEnemy(gameState, 5)
+                    defNearEnemyList.sort()
+                    defEnemyList = self.getEnemyDist(gameState, 12, self.defencePos2)
+                    defEnemyList.sort()
+                dangDist = self.getMazeDistance(self.mypos, self.defencePos2)
                 if (len(defEnemyList) > 0):
-                    #enemyPos = defEnemyList[0][2]
-                    #defencePosDist = self.getMazeDistance(self.mypos, self.defencePos2)
-                    moveAction = self.headDestAction(gameState, defEnemyList[0][2] , actions)
-                elif (len(defEnemyList) > 0 and 
-                        self.getMazeDistance(self.mypos, self.defencePos2) < 12):
-                    moveAction = self.headDestAction(gameState, defEnemyList[0][2] , actions)
+                    dangManDist = manhattanDistance(self.mypos, defEnemyList[0][2])
+                    if (defEnemyList[0][0] < dangDist - 1 or dangManDist < 5):
+                        moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
+                    else:
+                        if (len(defNearEnemyList) > 0):
+                            moveAction = self.headDestAction(gameState, defNearEnemyList[0][2] , actions)
+                        else:
+                            moveAction = self.headDestAction(gameState, defEnemyList[0][2] , actions)
                 else:
                     moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
                 successor = self.getSuccessor(gameState, moveAction)
@@ -583,7 +593,6 @@ class GeneralAgent(BaseAgent):
                 moveAction = eatAction
 
         elif self.mode == "lock":
-            #print (str(self.index) + ": " + str(self.lockPos))
             self.pointToWin = self.checkOutsideFood() * 10
             moveAction = self.headDestAction(gameState, self.lockPos, actions)
             self.syncmode("lock")
@@ -611,6 +620,7 @@ class TopLaneAgent(GeneralAgent):
         firstAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        self.lane = "top"
         if self.index % 2 == 0:
             g_intorState = ["start", None, "start", None, "start", None]
         else:
@@ -637,6 +647,7 @@ class MidLaneAgent(GeneralAgent):
         secondAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        self.lane = "mid"
         if self.red:
             self.defencePos1 = (14, 7)
             self.defencePos2 = (12, 13)
@@ -654,6 +665,7 @@ class BotLaneAgent(GeneralAgent):
         thirdAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
+        self.lane = "bot"
         if self.red:
             self.defencePos1 = (11, 2)
             self.defencePos2 = (6, 5)
