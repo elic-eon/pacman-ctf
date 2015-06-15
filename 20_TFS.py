@@ -30,6 +30,8 @@ global firstAgentSight
 global secondAgentSight
 global thirdAgentSight
 global defendFoodList
+global g_outsideFood
+global g_gardPosLot
 
 def createTeam(firstIndex, secondIndex, thirdIndex, isRed,
                first = 'TopLaneAgent', second = 'MidLaneAgent', third = 'BotLaneAgent'):
@@ -52,7 +54,6 @@ class BaseAgent(CaptureAgent):
         self.pointToWin = 100
         self.wallMemory = gameState.getWalls().deepCopy()
         self.blockers = []
-        g_intorState = [None, None, None, None, None, None]
         defendFoodList = self.getFoodYouAreDefending(gameState).asList()
 
     def degree(self, gameState, pos):
@@ -114,14 +115,17 @@ class BaseAgent(CaptureAgent):
                     l += [(index, self.getnoiseOppDistance(gameState, index))]
         return l
 
-    def getNearEnemy(self, gameState, myfilter = 9999):
+    def getEnemyDist(self, gameState, myfilter, pos):
         enemyList = self.getEnemy(gameState)
         distList = []
         for enemy in enemyList:
-            dist = self.getMazeDistance(self.mypos, enemy[1])
+            dist = self.getMazeDistance(pos, enemy[1])
             if dist <= myfilter:
                 distList += [(dist, enemy[0], enemy[1])]
         return distList
+
+    def getNearEnemy(self, gameState, myfilter = 9999):
+        return self.getEnemyDist(gameState, myfilter, self.mypos)
 
     def getTeamAgentState(self, gameState):
         l = []
@@ -326,7 +330,7 @@ class BaseAgent(CaptureAgent):
                         for y in range(height):
                             if not walls[x][y] and self.getMazeDistance((x,y), pos) <= 3:
                                 newBlocker[x][y] = True
-                    self.blockers.append([20, newBlocker])
+                    self.blockers.append([25, newBlocker])
                     
         for blocker in self.blockers:
             for x in range(width):
@@ -348,13 +352,17 @@ class BaseAgent(CaptureAgent):
         if nFood == None:
             self.mode = "defence"
             dest = self.defencePos1
+            return self.headDestAction(gameState, dest, actions)
         # can win
-        if self.getScore(gameState) >= self.pointToWin:
-            self.mode = "lock"
+        if self.getScore(gameState) >= self.pointToWin + 30:
+            self.mode = "defence"
+            dest = self.defencePos1
+            return self.headDestAction(gameState, dest, actions)
         # not pacman and someone is pacman
         if not self.myState.isPacman and self.numTeamPacman > 0:
             self.mode = "defence"
             dest = self.defencePos1
+            return self.headDestAction(gameState, dest, actions)
 
         #### actions ####
         action = self.fetchCapsule(gameState)
@@ -452,6 +460,20 @@ class BaseAgent(CaptureAgent):
             else:
                 return retPos
 
+    def checkOutsideFood(self):
+        global g_outsideFood
+        global defendFoodList
+        i = len(g_outsideFood)
+        for food in g_outsideFood:
+            if food not in defendFoodList:
+                i -= 1
+        return i
+
+    def syncmode(self, state):
+        global g_intorState
+        for index in self.teamIndces:
+            g_intorState[index] = state
+
     def chooseAction(self, gameState):
         actions = gameState.getLegalActions(self.index)
         return random.choice(actions)
@@ -472,7 +494,7 @@ class GeneralAgent(BaseAgent):
         self.myState = gameState.getAgentState(self.index)
         self.mypos = self.myState.getPosition()
         self.numTeamPacman = self.getNumPacman(gameState)
-        # TODO update pointToWin each time
+        self.pointToWin = self.checkOutsideFood() * 10
 
         # update global noise sight
         self.getNoiseDistance(gameState)
@@ -482,9 +504,9 @@ class GeneralAgent(BaseAgent):
         eatAction = self.tryEatAction(gameState, oppPositions, actions)
         enemyDistList = self.getNearEnemy(gameState, 2)
 
-        #print(self.getNearEnemy(gameState, 999))
         # read mode from golbal
         self.mode = g_intorState[self.index]
+        #print self.mode
 
         if self.mypos == self.start and self.mode != "start":
             # respawn
@@ -514,10 +536,7 @@ class GeneralAgent(BaseAgent):
 
         elif self.mode == "defence":
             ### mode check ###
-            if self.getScore(gameState) >= self.pointToWin:
-                # enough poing to win
-                self.mode = "lock"
-            elif (self.numTeamPacman > 0 or
+            if (self.numTeamPacman > 0 or
                     "attack" in g_intorState):
                 # only one pacman in one time
                 self.mode = "defence"
@@ -527,30 +546,50 @@ class GeneralAgent(BaseAgent):
             # mostly two defender mode
             if self.getNumState("defence") == 3:
                 # three defender
+                if self.numTeamPacman == 0:
+                    if self.getScore(gameState) > self.pointToWin:
+                        # enough poing to win
+                        self.mode = "lock"
+                        self.syncmode("lock")
+                        #print "sync"
                 moveAction = self.headDestAction(gameState, self.defencePos1 , actions)
-            elif self.getNumState("defence") == 2:
+            elif (self.getNumState("defence") == 2 or
+                    (self.getNumState("defence") == 3 and 
+                        self.numTeamPacman == 1)
+                    ):
                 # two defender
-                defNearEnemyList = self.getNearEnemy(gameState, 10)
+                defNearEnemyList = self.getNearEnemy(gameState, 5)
                 defNearEnemyList.sort()
+                defEnemyList = self.getEnemyDist(gameState, 10, self.defencePos2)
+                defEnemyList.sort()
                 #print(defNearEnemyList)
-                if (len(defNearEnemyList) > 0):
-                    moveAction = self.headDestAction(gameState, defNearEnemyList[0][2] , actions)
+                if (len(defEnemyList) > 0):
+                    #enemyPos = defEnemyList[0][2]
+                    #defencePosDist = self.getMazeDistance(self.mypos, self.defencePos2)
+                    moveAction = self.headDestAction(gameState, defEnemyList[0][2] , actions)
+                elif (len(defEnemyList) > 0 and 
+                        self.getMazeDistance(self.mypos, self.defencePos2) < 12):
+                    moveAction = self.headDestAction(gameState, defEnemyList[0][2] , actions)
                 else:
                     moveAction = self.headDestAction(gameState, self.defencePos2 , actions)
-            elif self.getNumState("defence") == 1:
+                successor = self.getSuccessor(gameState, moveAction)
+                if successor.getAgentState(self.index).isPacman:
+                    moveAction = Directions.STOP
+            else:
                 # one defender but should never happen
-                moveAction = self.headDestAction(gameState, self.defencePos3, actions)
+                moveAction = self.headDestAction(gameState, self.lockPos, actions)
 
             if eatAction:
                 moveAction = eatAction
-            successor = self.getSuccessor(gameState, moveAction)
-            if successor.getAgentState(self.index).isPacman:
-                moveAction = Directions.STOP
 
         elif self.mode == "lock":
+            #print (str(self.index) + ": " + str(self.lockPos))
+            self.pointToWin = self.checkOutsideFood() * 10
             moveAction = self.headDestAction(gameState, self.lockPos, actions)
+            self.syncmode("lock")
             if self.getScore(gameState) < self.pointToWin:
                 self.mode = "defence"
+                self.syncmode("defence")
             if eatAction:
                 moveAction = eatAction
 
@@ -567,48 +606,54 @@ class TopLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
         global g_intorState
         global firstAgentSight
+        global g_outsideFood
+        global g_gardPosLot
         firstAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
-        g_intorState[self.index] = self.mode
+        if self.index % 2 == 0:
+            g_intorState = ["start", None, "start", None, "start", None]
+        else:
+            g_intorState = [None, "start", None, "start", None, "start"]
+
         if self.red:
             self.defencePos1 = (12, 13)
             self.defencePos2 = (12, 13)
             self.defencePos3 = (13, 7)
             self.lockPos = (12, 13)
+            g_outsideFood = [(13, 1), (14, 5), (14, 7), (14, 9), (10, 9)]
+            g_gardPosLot = [(self.index, (12, 6)), (self.index+2, (12, 13))]
         else:
-            self.defencePos1 = (20, 2)
-            self.defencePos2 = (11, 2)
-            self.defencePos3 = (11, 2)
+            self.defencePos1 = (19, 2)
+            self.defencePos2 = (19, 2)
+            self.defencePos3 = (19, 9)
             self.lockPos = (19, 2)
+            g_outsideFood = [(18, 14), (17, 6), (17, 8), (17, 10), (10, 9)]
+            g_gardPosLot = [(self.index, (19, 9)), (self.index+2, (19, 2))]
 
 class MidLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
-        global g_intorState
         global secondAgentSight
         secondAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
-        g_intorState[self.index] = self.mode
         if self.red:
-            self.defencePos1 = (13, 7)
+            self.defencePos1 = (14, 7)
             self.defencePos2 = (12, 13)
             self.defencePos3 = (13, 7)
             self.lockPos = (12, 6)
         else:
-            self.defencePos1 = (18, 8)
-            self.defencePos2 = (13, 7)
-            self.defencePos3 = (18, 8)
+            self.defencePos1 = (17, 8)
+            self.defencePos2 = (19, 2)
+            self.defencePos3 = (19, 9)
             self.lockPos = (19, 9)
 
 class BotLaneAgent(GeneralAgent):
     def registerInitialState(self, gameState):
-        global g_intorState
         global thirdAgentSight
         thirdAgentSight = [1,1,1,1,1,1]
         BaseAgent.registerInitialState(self, gameState)
         self.mode = "start"
-        g_intorState[self.index] = self.mode
         if self.red:
             self.defencePos1 = (11, 2)
             self.defencePos2 = (6, 5)
@@ -616,8 +661,8 @@ class BotLaneAgent(GeneralAgent):
             self.lockPos = (11, 2)
         else:
             self.defencePos1 = (20, 13)
-            self.defencePos2 = (11, 2)
-            self.defencePos3 = (11, 2)
+            self.defencePos2 = (25, 10)
+            self.defencePos3 = (19, 9)
             self.lockPos = (20, 13)
 
 class DebugAgent(BaseAgent):
